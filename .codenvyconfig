@@ -1,0 +1,66 @@
+{
+  "defaultEnv": "custom-redis",
+  "commands": [
+    {
+      "commandLine": "mvn -f ${current.project.path} clean install tomcat7:run",
+      "name": "TomcatRun",
+      "type": "mvn",
+      "attributes": {
+        "previewUrl": "http://${server.port.8080}/${current.project.relpath}"
+      }
+    },
+    {
+      "commandLine": "sudo service redis-server start",
+      "name": "redis",
+      "type": "custom",
+      "attributes": {
+        "previewUrl": "http://${server.port.8000}/"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "mixins": [
+        "pullrequest"
+      ],
+      "problems": [],
+      "source": {
+        "location": "https://github.com/spring-projects/spring-mvc-showcase.git",
+        "type": "git",
+        "parameters": {}
+      },
+      "description": "A simple ASP.net web sample.",
+      "name": "spring-web-simple",
+      "type": "maven",
+      "path": "/spring-web-simple",
+      "attributes": {
+        "contribute_to_branch": [
+          "master"
+        ]
+      }
+    }
+  ],
+  "name": "redis-custom",
+  "environments": {
+    "custom-redis": {
+      "machines": {
+        "dev-machine": {
+          "servers": {},
+          "agents": [
+            "org.eclipse.che.ws-agent",
+            "org.eclipse.che.terminal",
+            "org.eclipse.che.ssh"
+          ],
+          "attributes": {
+            "memoryLimitBytes": "1073741824"
+          }
+        }
+      },
+      "recipe": {
+        "contentType": "text/x-dockerfile",
+        "type": "dockerfile",
+        "content": "FROM ubuntu\nEXPOSE 4403 8000 8080 9876 22\nRUN apt-get update && \\\n    apt-get -y install sudo openssh-server procps wget unzip mc vim net-tools curl subversion software-properties-common python-software-properties && \\\n    mkdir /var/run/sshd && \\\n    sed 's@session\\s*required\\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd && \\\n    echo \"%sudo ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers && \\\n    useradd -u 1000 -G users,sudo -d /home/user --shell /bin/bash -m user && \\\n    echo \"secret\\nsecret\" | passwd user && \\\n    add-apt-repository ppa:git-core/ppa && \\\n    apt-get update && \\\n    sudo apt-get install git -y && \\\n    sudo apt-get install redis-server -y && \\\n    apt-get clean && \\\n    apt-get -y autoremove && \\\n    rm -rf /var/lib/apt/lists/*\n\nUSER user\n\nLABEL che:server:8080:ref=tomcat8 che:server:8080:protocol=http che:server:8000:ref=tomcat8-debug che:server:8000:protocol=http che:server:9876:ref=codeserver che:server:9876:protocol=http\n\n\nENV MAVEN_VERSION=3.3.9 \\\n    JAVA_VERSION=8u45 \\\n    JAVA_VERSION_PREFIX=1.8.0_45 \\\n    TOMCAT_HOME=/home/user/tomcat8\n\nENV JAVA_HOME=/opt/jdk$JAVA_VERSION_PREFIX \\\nM2_HOME=/home/user/apache-maven-$MAVEN_VERSION\n\nENV PATH=$JAVA_HOME/bin:$M2_HOME/bin:$PATH\n\nRUN mkdir /home/user/cbuild /home/user/tomcat8 /home/user/apache-maven-$MAVEN_VERSION && \\\n  wget \\\n  --no-cookies \\\n  --no-check-certificate \\\n  --header \"Cookie: oraclelicense=accept-securebackup-cookie\" \\\n  -qO- \\\n  \"http://download.oracle.com/otn-pub/java/jdk/$JAVA_VERSION-b14/jdk-$JAVA_VERSION-linux-x64.tar.gz\" | sudo tar -zx -C /opt/ && \\\n  wget -qO- \"http://apache.ip-connect.vn.ua/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz\" | tar -zx --strip-components=1 -C /home/user/apache-maven-$MAVEN_VERSION/\nENV TERM xterm\n\nRUN wget -qO- \"http://archive.apache.org/dist/tomcat/tomcat-8/v8.0.24/bin/apache-tomcat-8.0.24.tar.gz\" | tar -zx --strip-components=1 -C /home/user/tomcat8 && \\\n    rm -rf /home/user/tomcat8/webapps/*\n\n\nENV LANG en_GB.UTF-8\nENV LANG en_US.UTF-8\nRUN echo \"export JAVA_HOME=/opt/jdk$JAVA_VERSION_PREFIX\\nexport M2_HOME=/home/user/apache-maven-$MAVEN_VERSION\\nexport TOMCAT_HOME=/home/user/tomcat8\\nexport PATH=$JAVA_HOME/bin:$M2_HOME/bin:$PATH\" >> /home/user/.bashrc && \\\n    sudo locale-gen en_US.UTF-8\n\nWORKDIR /projects\n\nCMD sudo /usr/sbin/sshd -D && \\\n    tail -f /dev/null"
+      }
+    }
+  }
+}
